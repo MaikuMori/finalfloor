@@ -1,0 +1,10 @@
+Solution for Stripe CTF 2.0 (https://stripe-ctf.com) level 8 written in 
+Go.
+
+Usage:
+finalfloor webhook_listen_address remote_server_address 
+
+Example:
+finalfloor localhost:12345 https://level08-4.stripe-ctf.com/user-xxxxxxxxxx/
+
+Author: Miks Kalnins (Maiku Mori)
